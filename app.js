@@ -6,9 +6,11 @@ const bcrypt = require('bcryptjs');
 const flash = require('connect-flash');
 const session = require('express-session');
 const passport = require('passport');
+const http = require('http');
+const bodyParser = require('body-parser');
+const users = require('./config/data').userDB; 
 
-
-
+const server = http.createServer(app);
 // passport config 
 require('./config/passport')(passport);
 
@@ -26,7 +28,7 @@ mongoose.connect(db, { useNewUrlParser: true })
 // User model
 const user = require('./models/user');
 const { post } = require('got');
-const posts = require('./models/posts');
+const posts = require('./models/amaan_posts');
 // const passport = require('./config/passport');
 
 
@@ -90,16 +92,52 @@ app.get( '/login', ( req, res ) => {
 
 
 // for authentication......below signup route
-    app.post('/login', (req, res, next) => {
-        passport.authenticate('local', {
-            successRedirect: '/dashboard',
-            failureRedirect: '/dashboard',
-            failureFlash: true
-        })(req, res, next);
+    // app.post('/login', (req, res, next) => {
+    //     passport.authenticate('local', {
+    //         successRedirect: '/dashboard',
+    //         failureRedirect: '/dashboard',
+    //         failureFlash: true
+    //     })(req, res, next);
+    // });
+    app.post('/login', async (req, res) => {
+        console.log(req.body)
+        try{
+            let foundUser = users.find((data) => req.body.Bennett_email_id === data.Bennett_email_id);
+            if (foundUser) {
+        
+                let submittedPass = req.body.Password; 
+                let storedPass = foundUser.Password; 
+                console.log("reached here")
+                const passwordMatch = await bcrypt.compare(submittedPass, storedPass);
+                if (passwordMatch) {
+                    let usrname = foundUser.Username;
+                    // res.send(`<div align ='center'><h2>login successful</h2></div><br><br><br><div align ='center'><h3>Hello ${usrname}</h3></div><br><br><div align='center'><a href='./login.html'>logout</a></div>`);
+                    res.redirect('/proto-type-dashoard');
+                    console.log('success') 
+                } else {
+                    // res.send("<div align ='center'><h2>Invalid email or password</h2></div><br><br><div align ='center'><a href='./login.html'>login again</a></div>");
+                    req.flash('error_msg','wrong email or password')
+                    res.redirect('/login');
+                    console.log('fail')
+                }
+            } 
+            else {
+        
+                // let fakePass = `$2b$$10$ifgfgfgfgfgfgfggfgfgfggggfgfgfga`;
+                // await bcrypt.compare(req.body.Password, fakePass);
+                req.flash('error_msg','wrong email or password')
+                res.redirect('/login');
+                
+            }
+        } catch{
+            
+            res.redirect('/login');
+            req.flash('error_msg','wrong email or password')
+        }
     });
 
 });
-
+ 
 
 
  
@@ -163,7 +201,7 @@ app.get( '/sign_up', ( req, res ) => {
                             Password,
                             Confirm_Paassword
                         });
-
+                        users.push(newuser);
                         // Hash password
                         bcrypt.genSalt(10, (err, salt) => 
                             bcrypt.hash(newuser.Password, salt, (err, hash) => {
@@ -172,6 +210,8 @@ app.get( '/sign_up', ( req, res ) => {
                                 newuser.Password = hash;
                                 newuser.Confirm_Paassword = hash;
                                 // save user
+                                
+                                console.log(newuser)
                                 newuser.save()
                                     .then(User => {
                                         req.flash('success_msg', 'You are now registered and can log in');
@@ -186,9 +226,15 @@ app.get( '/sign_up', ( req, res ) => {
 });
 
 
-app.get( '/dashboard', ( req, res ) => {
+app.get( '/proto-type-dashoard', ( req, res ) => {
     res.render('homepage');
-});    
+});
+
+
+// app.get( '/proto-type-dashboard', ( req, res ) => {
+//     res.render('testfile');
+// });
+
 
 
 
@@ -208,15 +254,22 @@ app.get( '/dashboard', ( req, res ) => {
 
 app.get( '/add_post', ( req, res ) => {
     res.render('post');
-    app.post('/add_post', (req, res) => { 
-        const{ Title, Content, PostedAt } = req.body;
-
+    // console.log(req.body)
+    
+    app.post('/post', (req, res) => { 
+        console.log("reached1")
+        const{ Title, Content } = req.body;
+        console.log(req.body)
+        console.log("reached")
         const newpost = new posts({
             Title,
             Content
         });
+        // console.log(newpost)
         newpost.save()
-        res.redirect('/dashboard');
+        console.log('hello')
+        res.redirect('/proto-type-dashoard');
+        console.log('hello2')
     }); 
 });
   
